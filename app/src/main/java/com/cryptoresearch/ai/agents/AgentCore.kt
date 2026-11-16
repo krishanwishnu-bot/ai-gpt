@@ -63,7 +63,7 @@ interface ResearchAgent {
     suspend fun run(ctx: ResearchContext): AgentReport
 }
 
-/** Holds the live status of all eight agents for the Agent Monitor screen. */
+/** Holds the live status of all nine research agents for the Agent Monitor screen. */
 class AgentMonitor {
     private val _states = MutableStateFlow(defaultStates())
     val states: StateFlow<List<AgentState>> = _states
@@ -85,7 +85,8 @@ class AgentMonitor {
             "Sentiment Analysis Agent" to "News tone (keyword heuristic) and Fear & Greed Index.",
             "Bullish Evidence Agent" to "Collects bullish indicators with strength and uncertainty.",
             "Bearish Evidence Agent" to "Collects bearish indicators with strength and uncertainty.",
-            "Risk & Final Report Agent" to "Reviews all reports, finds conflicts and data gaps, builds the final report."
+            "Elliott Wave & NEoWave Agent" to "Checks multi-timeframe swing structure, basic impulse rules, Fibonacci context and invalidation levels; labels uncertain counts.",
+            "Risk & Signal Engine Agent" to "Validates evidence and data quality, resolves conflicts, classifies the research and builds the final report."
         )
 
         fun defaultStates(): List<AgentState> =

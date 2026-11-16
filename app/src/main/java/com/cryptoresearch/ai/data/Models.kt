@@ -123,7 +123,7 @@ enum class Classification(val label: String) {
 }
 
 enum class Strength(val label: String) {
-    NONE("n/a"), WEAK("Weak"), MEDIUM("Medium"), STRONG("Strong");
+    NONE("n/a"), WEAK("Weak"), MEDIUM("Medium"), STRONG("Strong"), VERY_STRONG("Very Strong");
 
     companion object {
         fun fromName(n: String): Strength = values().firstOrNull { it.name == n } ?: NONE

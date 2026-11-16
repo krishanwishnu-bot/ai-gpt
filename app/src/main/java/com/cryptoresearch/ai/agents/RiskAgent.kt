@@ -11,11 +11,11 @@ import com.cryptoresearch.ai.data.freshnessOf
 import com.cryptoresearch.ai.util.Fmt
 import kotlin.math.abs
 
-// Agent 8 - reviews the seven other reports and assembles the 12-section research report
+// Agent 9 - validates evidence and data, then assembles the final research report
 class RiskAgent : ResearchAgent {
-    override val id = 8
-    override val name = "Risk & Final Report Agent"
-    override val role = AgentMonitor.AGENT_INFO[7].second
+    override val id = 9
+    override val name = "Risk & Signal Engine Agent"
+    override val role = AgentMonitor.AGENT_INFO[8].second
 
     override suspend fun run(ctx: ResearchContext): AgentReport {
         ctx.running("Reviewing agent reports")
@@ -26,7 +26,7 @@ class RiskAgent : ResearchAgent {
 
         // ----- data gaps -----
         val gaps = ArrayList<String>()
-        for (i in 1..7) {
+        for (i in 1..8) {
             val st = ctx.reports[i]
             if (st == null) gaps.add("Agent $i produced no report (failed or skipped).")
         }
@@ -40,7 +40,11 @@ class RiskAgent : ResearchAgent {
             }
         }
         if (ctx.news.isEmpty()) gaps.add("News unavailable: ${ctx.newsError ?: "unknown"}")
-        else if (ctx.newsScope == "general") gaps.add("News is general market news, not coin-specific.")
+        else {
+            if (ctx.newsScope == "general") gaps.add("News is general market news, not coin-specific.")
+            if (ctx.newsFetchedAt != null && now - ctx.newsFetchedAt!! > 24 * 60 * 60_000L) gaps.add("News data is older than 24 hours.")
+            if (ctx.newsFromCache) gaps.add("News was served from cache; verify publication timestamps.")
+        }
         if (ctx.fng == null) gaps.add("Fear & Greed unavailable: ${ctx.fngError ?: "unknown"}")
         if (ctx.global == null) gaps.add("Global market stats unavailable: ${ctx.globalError ?: "unknown"}")
         ctx.coinFetchNote?.let { gaps.add(it) }
@@ -109,13 +113,14 @@ class RiskAgent : ResearchAgent {
         val okCount = ctx.snapshots.values.count { it.ok }
         conf -= (4 - okCount) * 12
         if (ctx.news.isEmpty()) conf -= 8 else if (ctx.newsScope == "general") conf -= 4
-        if (ctx.fng == null) conf -= 4
-        if (ctx.global == null) conf -= 3
+        if (ctx.fng == null) conf -= 4 else if (ctx.fng!!.stale) conf -= 3
+        if (ctx.global == null) conf -= 3 else if (ctx.global!!.stale) conf -= 3
+        if (ctx.newsFetchedAt != null && now - ctx.newsFetchedAt!! > 24 * 60 * 60_000L) conf -= 4
         if (ctx.snapshots.values.any { it.ok && it.approximate }) conf -= 10
         if (ctx.snapshots.values.any { it.ok && it.stale }) conf -= 6
         if (ctx.coinFetchNote != null) conf -= 6
         conf -= minOf(12, conflicts.size * 4)
-        conf -= (7 - ctx.reports.keys.count { it in 1..7 }).coerceAtLeast(0) * 5
+        conf -= (8 - ctx.reports.keys.count { it in 1..8 }).coerceAtLeast(0) * 5
         conf = conf.coerceIn(5, 95)
         val confLabel = if (conf >= 75) "High" else if (conf >= 50) "Medium" else "Low"
 
@@ -137,7 +142,8 @@ class RiskAgent : ResearchAgent {
                 val mine = if (diff > 0) bull else bear
                 val other = if (diff > 0) bear else bull
                 var st = strengthOf(mine, other)
-                if (conf < 50 && st == Strength.STRONG) st = Strength.MEDIUM
+                if (conf < 50 && (st == Strength.STRONG || st == Strength.VERY_STRONG)) st = Strength.MEDIUM
+                if (conf < 35 && st == Strength.MEDIUM) st = Strength.WEAK
                 strength = st
             }
         }
@@ -147,7 +153,9 @@ class RiskAgent : ResearchAgent {
         val oldestCandle = ctx.series.values.minOfOrNull { it.fetchedAt }
         val candleFresh = oldestCandle?.let { freshnessOf(it, ctx.series.values.all { s -> s.fromCache }, ctx.series.values.any { s -> s.stale }, 60 * 60_000L) }
         val freshText = "Price: ${coinFresh.text}" + (if (candleFresh != null) " · Candles: ${candleFresh.text}" else " · Candles: unavailable") +
-            (if (ctx.newsFetchedAt != null) " · News: ${Fmt.ago(ctx.newsFetchedAt!!)}" else "")
+            (if (ctx.newsFetchedAt != null) " · News: ${Fmt.ago(ctx.newsFetchedAt!!)}" else "") +
+            (if (ctx.fng?.stale == true) " · Fear & Greed: stale" else "") +
+            (if (ctx.global?.stale == true) " · Global stats: stale" else "")
         val anyStale = coinFresh.level == FreshLevel.STALE || candleFresh?.level == FreshLevel.STALE
 
         // ----- sources -----
@@ -177,7 +185,8 @@ class RiskAgent : ResearchAgent {
             mtf.add(if (s == null) "${tf.label}: unavailable" else if (!s.ok) "${tf.label}: ${s.note}" else "${tf.label}: ${s.trend} (net score ${s.net}) — ${s.structure.label}")
         }
         mtf.add(if (trends.size >= 2) "Alignment: ${tBull.size} bullish, ${tBear.size} bearish, ${trends.size - tBull.size - tBear.size} mixed of ${trends.size} timeframes." else "Alignment: not enough timeframes for a multi-timeframe view.")
-        sections.add(ReportSection("5. Multi-Timeframe Analysis", mtf))
+        rep(8)?.details?.forEach { mtf.add("Elliott / NEoWave: $it") }
+        sections.add(ReportSection("5. Multi-Timeframe & Elliott Wave Analysis", mtf))
 
         sections.add(ReportSection("6. News Analysis", rep(4)?.details ?: listOf("News unavailable: ${ctx.newsError ?: "unknown"}")))
         sections.add(ReportSection("7. Sentiment Analysis", rep(5)?.details ?: listOf("Sentiment Agent produced no report.")))

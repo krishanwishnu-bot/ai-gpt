@@ -39,7 +39,7 @@ fun MonitorScreen(vm: AppViewModel) {
         item {
             Panel {
                 Text("Agent Monitor", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Muted("Eight rule-based research modules run sequentially through a central orchestrator. They are calculation modules, not large language models. Tap an agent for its detailed report.")
+                Muted("Nine rule-based research modules run sequentially through a central orchestrator. They are calculation modules, not large language models. Tap an agent for its detailed report.")
                 Muted(
                     if (research.running) "Currently analysing ${research.coinSymbol}."
                     else if (research.coinSymbol != null) "Last run: ${research.coinSymbol}."

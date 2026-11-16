@@ -8,6 +8,7 @@ import com.cryptoresearch.ai.data.Timeframe
 
 internal fun strengthOf(score: Int, otherScore: Int): Strength = when {
     score <= 0 -> Strength.NONE
+    score >= 14 && score >= otherScore * 3 -> Strength.VERY_STRONG
     score >= 8 && score >= otherScore * 2 -> Strength.STRONG
     score >= 4 && score > otherScore -> Strength.MEDIUM
     else -> Strength.WEAK

@@ -191,6 +191,29 @@ fun DashboardScreen(vm: AppViewModel, onOpenCoin: (String) -> Unit, onNav: (Stri
             }
         }
 
+        // ---- all latest per-coin research results
+        item {
+            val latestPerCoin = rows.groupBy { it.coinId }
+                .mapNotNull { (_, reports) -> reports.maxByOrNull { it.createdAt } }
+                .sortedByDescending { it.createdAt }
+            Panel {
+                SectionTitle("All Coins Research Results")
+                if (latestPerCoin.isEmpty()) Muted("No coin has been analysed yet.")
+                else Muted("${latestPerCoin.size} coin(s) with saved research results.")
+            }
+        }
+        items(rows.groupBy { it.coinId }.mapNotNull { (_, reports) -> reports.maxByOrNull { it.createdAt } }.sortedByDescending { it.createdAt }, key = { "latest-" + it.coinId }) { r ->
+            Panel(Modifier.clickable { onOpenReport(r.id) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("${r.name} (${r.symbol})", fontWeight = FontWeight.SemiBold)
+                        Muted("${r.classification} · confidence ${r.confidencePct}% · ${Fmt.dateTime(r.createdAt)}")
+                    }
+                    ClassTag(Classification.fromName(r.classification))
+                }
+            }
+        }
+
         // ---- recently analysed + latest reports
         item {
             val recent = rows.distinctBy { it.coinId }.take(8)

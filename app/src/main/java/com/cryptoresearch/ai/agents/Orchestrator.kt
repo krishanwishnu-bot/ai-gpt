@@ -13,7 +13,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
 /**
- * Central orchestrator: runs the eight agents sequentially (low memory/CPU footprint) and
+ * Central orchestrator: runs the nine agents sequentially (low memory/CPU footprint) and
  * updates the [AgentMonitor]. Cancellation is cooperative: cancelling the calling coroutine
  * stops the run and marks the running agent as Idle ("Cancelled").
  */
@@ -25,7 +25,7 @@ class Orchestrator(
 ) {
     private val agents: List<ResearchAgent> = listOf(
         MarketAgent(), TechnicalAgent(), VolumeAgent(), NewsAgent(),
-        SentimentAgent(), BullishAgent(), BearishAgent(), RiskAgent()
+        SentimentAgent(), BullishAgent(), BearishAgent(), ElliottWaveAgent(), RiskAgent()
     )
 
     suspend fun research(coin: Coin, save: Boolean = true): Result<ResearchReport> {
@@ -60,8 +60,8 @@ class Orchestrator(
                             processing = "Failed", summary = "", details = emptyList(), error = msg
                         )
                     }
-                    // Agent 8 builds the report from whatever the others produced; if it fails the run fails.
-                    if (agent.id == 8) return Result.failure(Exception(msg))
+                    // Agent 9 builds the report from whatever the others produced; if it fails the run fails.
+                    if (agent.id == 9) return Result.failure(Exception(msg))
                 }
             }
             val report = ctx.finalReport ?: return Result.failure(Exception("No report was produced."))
